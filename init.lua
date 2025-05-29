@@ -38,7 +38,7 @@ require("lazy").setup({
     config = function()
       require("mason").setup()
       require("mason-lspconfig").setup({
-        ensure_installed = { "clangd", "eslint", "pyright" },
+        ensure_installed = { "clangd", "eslint", "pyright", "gopls" },
         automatic_installation = true,
       })
 
@@ -53,6 +53,19 @@ require("lazy").setup({
 
       -- Python
       lspconfig.pyright.setup({ capabilities = capabilities })
+
+      -- Go
+      lspconfig.gopls.setup({
+        capabilities = capabilities,
+        settings = {
+          gopls = {
+            analyses = {
+              unusedparams = true,
+            },
+            staticcheck = true,
+          },
+        },
+      })
 
       -- Keybindings for LSP
       vim.api.nvim_create_autocmd("LspAttach", {
@@ -109,7 +122,7 @@ require("lazy").setup({
     build = ":TSUpdate",
     config = function()
       require("nvim-treesitter.configs").setup({
-        ensure_installed = { "lua", "python", "javascript", "html", "css", "cpp", "c" },
+        ensure_installed = { "lua", "python", "javascript", "html", "css", "cpp", "c", "go", "gomod" },
         highlight = { enable = true },
         indent = { enable = true },
         incremental_selection = { enable = true },
@@ -121,7 +134,7 @@ require("lazy").setup({
   -- Fuzzy Finder
   {
     "nvim-telescope/telescope.nvim",
-    dependencies = { "nvim-lua/plenary.nvim", "nvim-telescope/telescope.nvim" },
+    dependencies = { "nvim-lua/plenary.nvim" },
     config = function()
       require("telescope").setup({
         defaults = {
@@ -188,7 +201,7 @@ require("lazy").setup({
     config = function()
       local dap = require("dap")
       require("mason-nvim-dap").setup({
-        ensure_installed = { "codelldb", "js" },
+        ensure_installed = { "codelldb", "js", "delve" },
         automatic_installation = true,
       })
 
@@ -233,6 +246,9 @@ require("lazy").setup({
           console = "integratedTerminal",
         },
       }
+
+      -- Go Debugging with delve
+      require("dap-go").setup()
 
       -- DAP UI
       require("dapui").setup()
@@ -289,6 +305,7 @@ require("lazy").setup({
           javascript = { "prettier" },
           cpp = { "clang-format" },
           c = { "clang-format" },
+          go = { "goimports" },
         },
         format_on_save = {
           timeout_ms = 500,
@@ -306,6 +323,7 @@ require("lazy").setup({
         javascript = { "eslint" },
         cpp = { "cpplint" },
         c = { "cpplint" },
+        go = { "golangcilint" },
       }
       vim.api.nvim_create_autocmd({ "BufWritePost" }, {
         callback = function()
@@ -363,6 +381,13 @@ require("lazy").setup({
             o = { ":DapStepOver<CR>", "Step Over" },
             i = { ":DapStepInto<CR>", "Step Into" },
           },
+          g = {
+            name = "+Go",
+            r = { ":GoRun<CR>", "Run" },
+            t = { ":GoTest<CR>", "Test" },
+            b = { ":GoBuild<CR>", "Build" },
+            c = { ":GoCoverage<CR>", "Coverage" },
+          },
           t = { ":TroubleToggle<CR>", "Toggle Trouble" },
         },
       })
@@ -376,7 +401,7 @@ require("lazy").setup({
   },
 
   { "nvim-neotest/nvim-nio" },
-  
+
   -- LazyGit
   {
     "kdheepak/lazygit.nvim",
@@ -399,6 +424,50 @@ require("lazy").setup({
     }
   },
 
+  --@type LazySpec
+  {
+  "mikavilpas/yazi.nvim",
+  event = "VeryLazy",
+  dependencies = {
+    -- check the installation instructions at
+    -- https://github.com/folke/snacks.nvim
+    "folke/snacks.nvim"
+  },
+  keys = {
+    -- 👇 in this section, choose your own keymappings!
+    {
+      "<leader>-",
+      mode = { "n", "v" },
+      "<cmd>Yazi<cr>",
+      desc = "Open yazi at the current file",
+    },
+    {
+      -- Open in the current working directory
+      "<leader>cw",
+      "<cmd>Yazi cwd<cr>",
+      desc = "Open the file manager in nvim's working directory",
+    },
+    {
+      "<c-up>",
+      "<cmd>Yazi toggle<cr>",
+      desc = "Resume the last yazi session",
+    },
+  },
+  ---@type YaziConfig | {}
+  opts = {
+    -- if you want to open yazi instead of netrw, see below for more info
+    open_for_directories = false,
+    keymaps = {
+      show_help = "<f1>",
+    },
+  },
+  -- 👇 if you use `open_for_directories=true`, this is recommended
+  init = function()
+    -- More details: https://github.com/mikavilpas/yazi.nvim/issues/802
+    -- vim.g.loaded_netrw = 1
+    vim.g.loaded_netrwPlugin = 1
+  end,
+  },
 
 
 })
@@ -411,3 +480,17 @@ vim.opt.shiftwidth = 2
 vim.opt.expandtab = true
 vim.opt.smartindent = true
 vim.opt.termguicolors = true
+
+-- Go-specific Commands
+vim.api.nvim_create_user_command("GoRun", function()
+  vim.cmd("!go run .")
+end, {})
+vim.api.nvim_create_user_command("GoTest", function()
+  vim.cmd("!go test ./...")
+end, {})
+vim.api.nvim_create_user_command("GoBuild", function()
+  vim.cmd("!go build")
+end, {})
+vim.api.nvim_create_user_command("GoCoverage", function()
+  vim.cmd("!go test -coverprofile=coverage.out && go tool cover -html=coverage.out")
+end, {})
